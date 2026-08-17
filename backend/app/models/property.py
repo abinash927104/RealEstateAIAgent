@@ -47,13 +47,18 @@ class Property(Base):
 
     # Location
     address: Mapped[str] = mapped_column(String(500), nullable=False)
-    city: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    city: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     state: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
-    zip_code: Mapped[str] = mapped_column(String(20), nullable=True, index=True)
-    latitude: Mapped[float] = mapped_column(Float, nullable=True)
-    longitude: Mapped[float] = mapped_column(Float, nullable=True)
+    zip_code: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
 
-    # Metadata
+    # Source Tracking
+    source: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    source_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    source_property_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    # Details
     features: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     images: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     status: Mapped[PropertyStatus] = mapped_column(

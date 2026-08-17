@@ -6,17 +6,18 @@ from pydantic import BaseModel, Field
 
 class ROIInput(BaseModel):
     """Input for ROI analysis."""
-    purchase_price: float = Field(..., description="Property purchase price in USD")
+    purchase_price: float = Field(..., description="Property purchase price (parse '80 Lakh' into 8000000.0 before passing)")
     down_payment_percent: float = Field(20.0, description="Down payment percentage")
-    monthly_rent: float = Field(..., description="Expected monthly rental income in USD")
-    annual_interest_rate: float = Field(6.5, description="Mortgage interest rate percentage")
-    loan_term_years: int = Field(30, description="Loan term in years")
+    monthly_rent: float = Field(..., description="Expected monthly rental income")
+    annual_interest_rate: float = Field(8.5, description="Mortgage interest rate percentage")
+    loan_term_years: int = Field(20, description="Loan term in years")
     annual_property_tax_rate: float = Field(1.2, description="Property tax rate percentage")
-    annual_insurance: float = Field(1500.0, description="Annual insurance cost in USD")
-    monthly_hoa: float = Field(0.0, description="Monthly HOA fees in USD")
+    annual_insurance: float = Field(1500.0, description="Annual insurance cost")
+    monthly_hoa: float = Field(0.0, description="Monthly HOA fees")
     annual_maintenance_rate: float = Field(1.0, description="Annual maintenance cost as percentage of property value")
     vacancy_rate: float = Field(5.0, description="Expected vacancy rate as percentage")
     annual_appreciation_rate: float = Field(3.0, description="Expected annual property appreciation percentage")
+    currency_symbol: str = Field("$", description="Currency symbol to use in the output (e.g., '$', '₹')")
 
 
 @tool(args_schema=ROIInput)
@@ -24,19 +25,20 @@ async def roi_analysis(
     purchase_price: float,
     down_payment_percent: float = 20.0,
     monthly_rent: float = 0.0,
-    annual_interest_rate: float = 6.5,
-    loan_term_years: int = 30,
+    annual_interest_rate: float = 8.5,
+    loan_term_years: int = 20,
     annual_property_tax_rate: float = 1.2,
     annual_insurance: float = 1500.0,
     monthly_hoa: float = 0.0,
     annual_maintenance_rate: float = 1.0,
     vacancy_rate: float = 5.0,
     annual_appreciation_rate: float = 3.0,
+    currency_symbol: str = "$",
 ) -> str:
     """
     Analyze the return on investment for a rental property.
     Use this when the user asks about investment potential, cap rates, cash-on-cash returns,
-    or whether a property is a good investment.
+    or whether a property is a good investment. Do not calculate these yourself; use this tool.
     """
     # Capital invested
     down_payment = purchase_price * (down_payment_percent / 100)
@@ -68,8 +70,6 @@ async def roi_analysis(
     )
 
     # Cash flow
-    effective_rent = monthly_rent * (1 - vacancy_rate / 100)
-    monthly_cash_flow = effective_rent - total_monthly_expenses + vacancy_cost  # vacancy already in expenses
     monthly_cash_flow = monthly_rent - total_monthly_expenses
     annual_cash_flow = monthly_cash_flow * 12
 
@@ -114,6 +114,8 @@ async def roi_analysis(
 
     break_even_str = f"{break_even_years:.1f} years" if break_even_years < 100 else "N/A (negative cash flow)"
 
+    c = currency_symbol
+
     return f"""
 📈 **Investment ROI Analysis**
 
@@ -121,23 +123,23 @@ async def roi_analysis(
 
 | Metric | Value |
 |--------|-------|
-| **Purchase Price** | ${purchase_price:,.2f} |
-| **Down Payment** ({down_payment_percent:.0f}%) | ${down_payment:,.2f} |
-| **Closing Costs** (~3%) | ${closing_costs:,.2f} |
-| **Total Cash Invested** | ${total_investment:,.2f} |
+| **Purchase Price** | {c}{purchase_price:,.2f} |
+| **Down Payment** ({down_payment_percent:.0f}%) | {c}{down_payment:,.2f} |
+| **Closing Costs** (~3%) | {c}{closing_costs:,.2f} |
+| **Total Cash Invested** | {c}{total_investment:,.2f} |
 
 **Monthly Cash Flow:**
 
 | Item | Amount |
 |------|--------|
-| Rental Income | ${monthly_rent:,.2f} |
-| Mortgage Payment | -${monthly_mortgage:,.2f} |
-| Property Tax | -${monthly_tax:,.2f} |
-| Insurance | -${monthly_insurance:,.2f} |
-| Maintenance | -${monthly_maintenance:,.2f} |
-| HOA | -${monthly_hoa:,.2f} |
-| Vacancy Reserve | -${vacancy_cost:,.2f} |
-| **Net Cash Flow** | **${monthly_cash_flow:,.2f}** |
+| Rental Income | {c}{monthly_rent:,.2f} |
+| Mortgage Payment | -{c}{monthly_mortgage:,.2f} |
+| Property Tax | -{c}{monthly_tax:,.2f} |
+| Insurance | -{c}{monthly_insurance:,.2f} |
+| Maintenance | -{c}{monthly_maintenance:,.2f} |
+| HOA | -{c}{monthly_hoa:,.2f} |
+| Vacancy Reserve | -{c}{vacancy_cost:,.2f} |
+| **Net Cash Flow** | **{c}{monthly_cash_flow:,.2f}** |
 
 **Key Investment Metrics:**
 
@@ -146,13 +148,13 @@ async def roi_analysis(
 | Cap Rate | {cap_rate:.2f}% |
 | Cash-on-Cash Return | {cash_on_cash:.2f}% |
 | Gross Yield | {gross_yield:.2f}% |
-| Annual NOI | ${noi:,.2f} |
-| Annual Cash Flow | ${annual_cash_flow:,.2f} |
+| Annual NOI | {c}{noi:,.2f} |
+| Annual Cash Flow | {c}{annual_cash_flow:,.2f} |
 | Break-Even | {break_even_str} |
 
 **5-Year Projection** (at {annual_appreciation_rate:.1f}% annual appreciation):
-- Projected Property Value: ${projected_value_5yr:,.2f}
-- Equity Gain: ${equity_gain_5yr:,.2f}
-- Total Cash Flow: ${total_cash_flow_5yr:,.2f}
+- Projected Property Value: {c}{projected_value_5yr:,.2f}
+- Equity Gain: {c}{equity_gain_5yr:,.2f}
+- Total Cash Flow: {c}{total_cash_flow_5yr:,.2f}
 - **Total 5-Year ROI: {total_roi_5yr:.1f}%**
 """

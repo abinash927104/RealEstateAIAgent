@@ -30,9 +30,18 @@ def create_agent():
         """Core reasoning node — decides whether to call tools or respond."""
         messages = state["messages"]
 
+        structured_state = state.get("structured_state", {})
+        state_str = "\\n".join([f"- {k}: {v}" for k, v in structured_state.items() if v is not None])
+        if state_str:
+            dynamic_prompt = SYSTEM_PROMPT + f"\\n\\n## Current Conversation State:\\n{state_str}\\nUse these values as defaults if the user doesn't specify them."
+        else:
+            dynamic_prompt = SYSTEM_PROMPT
+            
         # Prepend system prompt if not already present
         if not messages or not isinstance(messages[0], SystemMessage):
-            messages = [SystemMessage(content=SYSTEM_PROMPT)] + messages
+            messages = [SystemMessage(content=dynamic_prompt)] + messages
+        elif isinstance(messages[0], SystemMessage):
+            messages[0] = SystemMessage(content=dynamic_prompt)
 
         response = llm_with_tools.invoke(messages)
         return {"messages": [response]}

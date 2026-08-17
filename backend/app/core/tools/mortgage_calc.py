@@ -6,28 +6,30 @@ from pydantic import BaseModel, Field
 
 class MortgageInput(BaseModel):
     """Input for the mortgage calculator."""
-    property_price: float = Field(..., description="Total property price in USD")
+    property_price: float = Field(..., description="Total property price (parse text like '1.5 Cr' into 15000000.0 before passing)")
     down_payment_percent: float = Field(20.0, description="Down payment as a percentage (e.g., 20 for 20%)")
-    annual_interest_rate: float = Field(6.5, description="Annual interest rate as a percentage (e.g., 6.5 for 6.5%)")
-    loan_term_years: int = Field(30, description="Loan term in years (typically 15 or 30)")
+    annual_interest_rate: float = Field(8.5, description="Annual interest rate as a percentage (e.g., 8.5 for 8.5%)")
+    loan_term_years: int = Field(20, description="Loan term in years (typically 15, 20 or 30)")
     annual_property_tax_rate: float = Field(1.2, description="Annual property tax rate as percentage of home value")
-    annual_insurance: float = Field(1500.0, description="Annual homeowners insurance in USD")
-    monthly_hoa: float = Field(0.0, description="Monthly HOA fees in USD")
+    annual_insurance: float = Field(1500.0, description="Annual homeowners insurance")
+    monthly_hoa: float = Field(0.0, description="Monthly HOA fees")
+    currency_symbol: str = Field("$", description="Currency symbol to use in the output (e.g., '$', '₹')")
 
 
 @tool(args_schema=MortgageInput)
 async def mortgage_calculator(
     property_price: float,
     down_payment_percent: float = 20.0,
-    annual_interest_rate: float = 6.5,
-    loan_term_years: int = 30,
+    annual_interest_rate: float = 8.5,
+    loan_term_years: int = 20,
     annual_property_tax_rate: float = 1.2,
     annual_insurance: float = 1500.0,
     monthly_hoa: float = 0.0,
+    currency_symbol: str = "$",
 ) -> str:
     """
     Calculate monthly mortgage payments with a detailed breakdown.
-    Use this when the user asks about mortgage payments, affordability, or wants to know how much
+    Use this when the user asks about mortgage payments, EMI, affordability, or wants to know how much
     a property will cost per month. Uses deterministic math — never estimates.
     """
     # Core calculations
@@ -58,28 +60,29 @@ async def mortgage_calculator(
     total_interest = (monthly_pi * num_payments) - loan_amount
     total_cost = monthly_pi * num_payments + (monthly_tax + monthly_insurance + monthly_hoa) * num_payments
 
+    c = currency_symbol
     return f"""
 📊 **Mortgage Payment Breakdown**
 
 | Item | Amount |
 |------|--------|
-| **Property Price** | ${property_price:,.2f} |
-| **Down Payment** ({down_payment_percent:.1f}%) | ${down_payment:,.2f} |
-| **Loan Amount** | ${loan_amount:,.2f} |
+| **Property Price** | {c}{property_price:,.2f} |
+| **Down Payment** ({down_payment_percent:.1f}%) | {c}{down_payment:,.2f} |
+| **Loan Amount** | {c}{loan_amount:,.2f} |
 | **Interest Rate** | {annual_interest_rate:.2f}% |
 | **Loan Term** | {loan_term_years} years |
 
-**Monthly Payment: ${total_monthly:,.2f}**
+**Monthly EMI (Principal + Interest): {c}{monthly_pi:,.2f}**
 
 | Component | Monthly |
 |-----------|---------|
-| Principal & Interest | ${monthly_pi:,.2f} |
-| Property Tax | ${monthly_tax:,.2f} |
-| Insurance | ${monthly_insurance:,.2f} |
-| HOA Fees | ${monthly_hoa:,.2f} |
-| **Total** | **${total_monthly:,.2f}** |
+| EMI (P&I) | {c}{monthly_pi:,.2f} |
+| Property Tax | {c}{monthly_tax:,.2f} |
+| Insurance | {c}{monthly_insurance:,.2f} |
+| HOA Fees | {c}{monthly_hoa:,.2f} |
+| **Total** | **{c}{total_monthly:,.2f}** |
 
 **Lifetime Costs:**
-- Total Interest Paid: ${total_interest:,.2f}
-- Total Cost over {loan_term_years} years: ${total_cost:,.2f}
+- Total Interest Paid: {c}{total_interest:,.2f}
+- Total Cost over {loan_term_years} years: {c}{total_cost:,.2f}
 """

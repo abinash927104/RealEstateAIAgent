@@ -17,5 +17,7 @@ class AgentState(TypedDict):
     extracted_params: dict
     # Results from tool executions
     tool_results: list[dict]
+    # Persistent structured state
+    structured_state: dict
     # Final response text
     final_response: str | None

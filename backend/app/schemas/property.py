@@ -24,8 +24,15 @@ class PropertyCreate(BaseModel):
     zip_code: str | None = None
     latitude: float | None = None
     longitude: float | None = None
-    features: dict = Field(default_factory=dict)
-    images: list[str] = Field(default_factory=list)
+
+    # Source tracking
+    source: str | None = None
+    source_url: str | None = None
+    source_property_id: str | None = None
+
+    # Details
+    features: list[str] | None = Field(default_factory=list)
+    images: list[str] | None = Field(default_factory=list)
     year_built: int | None = None
     lot_size_sqft: float | None = None
     parking_spaces: int | None = None

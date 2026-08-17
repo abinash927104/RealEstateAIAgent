@@ -90,6 +90,13 @@ async def send_message(
                 limit=20,
             )
 
+            structured_state = {}
+            # Find the last assistant message to retrieve state
+            for msg in reversed(history):
+                if msg.role == MessageRole.ASSISTANT and msg.metadata_:
+                    structured_state = msg.metadata_.get("agent_state", {})
+                    break
+
             messages = []
             for msg in history:
                 if msg.role == MessageRole.USER:
@@ -109,6 +116,7 @@ async def send_message(
                     "intent": intent,
                     "extracted_params": classification.get("extracted_params", {}),
                     "tool_results": [],
+                    "structured_state": structured_state,
                     "final_response": None,
                 }
             )
@@ -117,11 +125,18 @@ async def send_message(
             last_message = result["messages"][-1]
             response_text = last_message.content
 
-            # Track which tools were used
+            # Track which tools were used and state updates
+            state_updates = {}
             for msg in result["messages"]:
                 if hasattr(msg, "tool_calls") and msg.tool_calls:
                     for tc in msg.tool_calls:
                         tools_used.append(tc["name"])
+                        if tc["name"] == "update_financial_context":
+                            state_updates.update(tc.get("args", {}))
+            
+            # Merge state updates into structured state
+            if state_updates:
+                structured_state.update({k: v for k, v in state_updates.items() if v is not None})
 
     except Exception as e:
         logger.error(f"AI processing failed: {e}", exc_info=True)
@@ -129,6 +144,8 @@ async def send_message(
             "I apologize, but I encountered an error processing your request. "
             "Could you try rephrasing your question?"
         )
+        structured_state = {}
+        state_updates = {}
 
     # Save assistant response
     elapsed_ms = (time.time() - start_time) * 1000
@@ -142,6 +159,7 @@ async def send_message(
             "intent": intent,
             "response_time_ms": round(elapsed_ms, 2),
             "tools_used": tools_used,
+            "agent_state": structured_state,
         },
     )
 

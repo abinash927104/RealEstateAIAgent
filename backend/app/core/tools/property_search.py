@@ -52,11 +52,52 @@ async def property_search(
             min_bathrooms=bathrooms,
             property_type=property_type,
             min_area_sqft=min_area_sqft,
-            page_size=10,
+            page_size=50,  # Increase page size since we might filter later with Chroma
         )
         db_results = await service.search(search_params)
-        for prop in db_results["properties"]:
-            results.append({
+        
+        # If no properties match the hard filters, return early so LLM falls back to scraper
+        if not db_results["properties"]:
+            return "No properties found matching your criteria in the local database. Try broadening your search or if searching in India, fallback to live search."
+
+        # If a natural language query is provided, use ChromaDB to filter and re-rank the SQL results
+        if query:
+            vector_service = VectorService()
+            
+            # Extract IDs from SQL results
+            valid_ids = [str(prop.id) for prop in db_results["properties"]]
+            
+            where_filter = {}
+            # We can't easily use $in if there are too many IDs or if Chroma doesn't support it in this version,
+            # but we can just use ChromaDB with the hard filters mapped directly to where.
+            if city:
+                where_filter["city"] = city
+            if property_type:
+                where_filter["property_type"] = property_type.lower()
+                
+            semantic_results = await vector_service.search_properties(
+                query=query,
+                n_results=10,
+                where=where_filter if where_filter else None,
+            )
+            
+            # Only keep results that were also in the SQL results (to enforce hard constraints like min_price)
+            for r in semantic_results:
+                if r["id"] in valid_ids:
+                    # Find the original property
+                    prop = next((p for p in db_results["properties"] if str(p.id) == r["id"]), None)
+                    if prop:
+                        results.append(prop)
+            
+            # If semantic search filtered out everything, fallback to returning the top 10 SQL results
+            if not results:
+                results = db_results["properties"][:10]
+        else:
+            results = db_results["properties"][:10]
+
+        formatted_results = []
+        for prop in results:
+            formatted_results.append({
                 "id": str(prop.id),
                 "title": prop.title,
                 "price": float(prop.price),
@@ -68,46 +109,23 @@ async def property_search(
                 "state": prop.state,
                 "property_type": prop.property_type.value if prop.property_type else None,
                 "status": prop.status.value if prop.status else None,
-                "images": prop.images[:2] if prop.images else [],
+                "source_url": prop.source_url,
             })
 
-    # Semantic search via ChromaDB if a natural language query is provided
-    if query and not results:
-        vector_service = VectorService()
-        where_filter = {}
-        if city:
-            where_filter["city"] = city
-        if property_type:
-            where_filter["property_type"] = property_type
-
-        semantic_results = await vector_service.search_properties(
-            query=query,
-            n_results=10,
-            where=where_filter if where_filter else None,
-        )
-        for r in semantic_results:
-            results.append({
-                "id": r["id"],
-                "description": r["document"],
-                "metadata": r["metadata"],
-                "relevance_score": round(1 - r["distance"], 3),
-            })
-
-    if not results:
+    if not formatted_results:
         return "No properties found matching your criteria. Try broadening your search."
 
     # Format results
-    output_lines = [f"Found {len(results)} properties:\n"]
-    for i, prop in enumerate(results, 1):
-        if "title" in prop:
-            line = f"{i}. **{prop['title']}** — ${prop['price']:,.0f}"
-            if prop.get("bedrooms"):
-                line += f" | {prop['bedrooms']}bd/{prop.get('bathrooms', '?')}ba"
-            if prop.get("area_sqft"):
-                line += f" | {prop['area_sqft']:,.0f} sqft"
-            line += f"\n   📍 {prop['address']}, {prop['city']}, {prop['state']}"
-        else:
-            line = f"{i}. {prop.get('description', 'Property')} (relevance: {prop.get('relevance_score', 'N/A')})"
+    output_lines = [f"Found {len(formatted_results)} properties:\n"]
+    for i, prop in enumerate(formatted_results, 1):
+        line = f"{i}. **{prop['title']}** — ${prop['price']:,.0f}"
+        if prop.get("bedrooms"):
+            line += f" | {prop['bedrooms']}bd/{prop.get('bathrooms', '?')}ba"
+        if prop.get("area_sqft"):
+            line += f" | {prop['area_sqft']:,.0f} sqft"
+        line += f"\n   📍 {prop['address']}, {prop['city']}, {prop['state']}"
+        if prop.get("source_url"):
+            line += f"\n   🔗 [View Listing]({prop['source_url']})"
         output_lines.append(line)
 
     return "\n".join(output_lines)

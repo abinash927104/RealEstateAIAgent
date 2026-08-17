@@ -18,8 +18,7 @@ export default function ChatPage() {
     {
       id: "welcome",
       role: "assistant",
-      content:
-        "Hello! 👋 I'm your AI Real Estate Assistant. I can help you with:\n\n🏠 **Property Search** — Find homes matching your criteria\n💰 **Mortgage Calculator** — Calculate monthly payments\n📈 **Investment Analysis** — Evaluate ROI on rental properties\n🏘️ **Market Analysis** — Get market trends and data\n\nWhat would you like to explore?",
+      content: "Hello! 👋 I'm your AI Real Estate Assistant. How can I help you today?",
       timestamp: new Date(),
     },
   ]);
@@ -37,8 +36,9 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = async () => {
-    const trimmed = input.trim();
+  const handleSend = async (overrideInput?: string) => {
+    const textToSend = overrideInput || input;
+    const trimmed = textToSend.trim();
     if (!trimmed || loading) return;
 
     const userMessage: Message = {
@@ -49,7 +49,7 @@ export default function ChatPage() {
     };
 
     setMessages((prev) => [...prev, userMessage]);
-    setInput("");
+    if (!overrideInput) setInput("");
     setLoading(true);
 
     try {
@@ -115,11 +115,43 @@ export default function ChatPage() {
     });
   };
 
-  const quickPrompts = [
-    "Find 3-bed homes in Austin under $500K",
-    "Calculate mortgage for a $400K home",
-    "What's the ROI on a $300K rental at $2K/month rent?",
-    "Market analysis for Miami, FL",
+  const quickActions = [
+    {
+      icon: "🏠",
+      title: "Property Search",
+      description: "Find homes matching your criteria",
+      prompt: "Find 3 BHK apartments in Bangalore under ₹2 Crores on MagicBricks",
+      gradient: "linear-gradient(135deg, rgba(20, 184, 166, 0.1) 0%, rgba(14, 165, 233, 0.1) 100%)",
+      border: "rgba(20, 184, 166, 0.3)",
+      hoverBorder: "rgba(20, 184, 166, 0.8)",
+    },
+    {
+      icon: "💰",
+      title: "Mortgage Calculator",
+      description: "Calculate monthly payments",
+      prompt: "Calculate EMI for a ₹1.5 Cr home with ₹30L down payment at 8.5% interest over 20 years",
+      gradient: "linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(217, 70, 239, 0.1) 100%)",
+      border: "rgba(139, 92, 246, 0.3)",
+      hoverBorder: "rgba(139, 92, 246, 0.8)",
+    },
+    {
+      icon: "📈",
+      title: "Investment Analysis",
+      description: "Evaluate ROI on rental properties",
+      prompt: "What is the ROI on a ₹80 Lakh rental yielding ₹35k/month?",
+      gradient: "linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(239, 68, 68, 0.1) 100%)",
+      border: "rgba(245, 158, 11, 0.3)",
+      hoverBorder: "rgba(245, 158, 11, 0.8)",
+    },
+    {
+      icon: "🏘️",
+      title: "Market Analysis",
+      description: "Get market trends and data",
+      prompt: "What are the real estate market trends in Mumbai right now?",
+      gradient: "linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%)",
+      border: "rgba(16, 185, 129, 0.3)",
+      hoverBorder: "rgba(16, 185, 129, 0.8)",
+    }
   ];
 
   return (
@@ -181,9 +213,9 @@ export default function ChatPage() {
                         flexWrap: "wrap",
                       }}
                     >
-                      {msg.toolsUsed.map((tool) => (
+                      {msg.toolsUsed.map((tool, index) => (
                         <span
-                          key={tool}
+                          key={`${tool}-${index}`}
                           style={{
                             fontSize: "0.7rem",
                             padding: "3px 8px",
@@ -201,6 +233,53 @@ export default function ChatPage() {
                 </div>
               </div>
             ))}
+
+            {/* Quick Actions Grid (Shown only on new conversation) */}
+            {messages.length <= 1 && (
+              <div className="animate-fade-in" style={{ marginTop: 24, marginBottom: 32 }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                    gap: 16,
+                  }}
+                >
+                  {quickActions.map((action, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => handleSend(action.prompt)}
+                      style={{
+                        padding: 20,
+                        borderRadius: 16,
+                        background: action.gradient,
+                        border: `1px solid ${action.border}`,
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 8,
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = "translateY(-2px)";
+                        e.currentTarget.style.borderColor = action.hoverBorder;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.borderColor = action.border;
+                      }}
+                    >
+                      <div style={{ fontSize: "1.8rem" }}>{action.icon}</div>
+                      <h4 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 600, color: "var(--color-text-primary)" }}>
+                        {action.title}
+                      </h4>
+                      <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--color-text-secondary)", lineHeight: 1.4 }}>
+                        {action.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Typing indicator */}
             {loading && (
@@ -225,53 +304,6 @@ export default function ChatPage() {
             <div ref={messagesEndRef} />
           </div>
         </div>
-
-        {/* Quick prompts */}
-        {messages.length <= 1 && (
-          <div
-            style={{
-              padding: "0 16px 12px",
-              display: "flex",
-              gap: 8,
-              justifyContent: "center",
-              flexWrap: "wrap",
-              maxWidth: 800,
-              margin: "0 auto",
-              width: "100%",
-            }}
-          >
-            {quickPrompts.map((prompt) => (
-              <button
-                key={prompt}
-                onClick={() => {
-                  setInput(prompt);
-                  setTimeout(() => inputRef.current?.focus(), 50);
-                }}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: 9999,
-                  border: "1px solid var(--color-border)",
-                  background: "var(--color-surface-elevated)",
-                  color: "var(--color-text-secondary)",
-                  fontSize: "0.8rem",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  whiteSpace: "nowrap",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "var(--color-accent)";
-                  e.currentTarget.style.color = "var(--color-accent)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "var(--color-border)";
-                  e.currentTarget.style.color = "var(--color-text-secondary)";
-                }}
-              >
-                {prompt}
-              </button>
-            ))}
-          </div>
-        )}
 
         {/* Input area */}
         <div
@@ -316,7 +348,7 @@ export default function ChatPage() {
               onBlur={(e) => (e.target.style.borderColor = "var(--color-border)")}
             />
             <button
-              onClick={handleSend}
+              onClick={() => handleSend()}
               disabled={!input.trim() || loading}
               className="btn-primary"
               style={{
