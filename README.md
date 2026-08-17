@@ -60,15 +60,17 @@ npm run dev
 - **Backend API**: http://localhost:8000
 - **API Docs**: http://localhost:8000/docs
 
-## 🧠 AI Features
+## 🧠 AI Features & Capabilities
 
 | Feature | Description |
 |---------|-------------|
-| **Property Search** | Natural language search with semantic matching (ChromaDB) |
-| **Mortgage Calculator** | Deterministic monthly payment breakdown with taxes/insurance |
-| **ROI Analysis** | Cap rate, cash-on-cash return, 5-year projection with grading |
-| **Market Analysis** | Aggregate stats, property type distribution, price ranges |
-| **Query Routing** | Automatic classification to RAG (simple) or Agent (complex) |
+| **Stateful Conversations** | The agent persists financial context (prices, rent, loan terms) across turns, allowing dynamic "what if" recalculations. |
+| **Strict Tool Grounding** | Prevents LLM hallucinations; the agent strictly relies on deterministic tools and live databases rather than inventing properties. |
+| **Advanced Property Search** | Combines SQL filtering for exact matches (beds, baths, price) with ChromaDB semantic search for soft constraints ("quiet neighborhood"). |
+| **Mortgage Calculator** | Accurately calculates EMI (Principal + Interest) while explicitly separating taxes, insurance, and HOA fees into a Total Monthly Cost. |
+| **ROI Analysis** | Calculates precise Cap Rate (NOI / Price), Cash-on-Cash Return accounting for actual capital invested, and 5-year equity projections. |
+| **Market Analysis** | Provides aggregate stats, property type distribution, and price ranges with full data-source transparency (live scrape vs. local DB). |
+| **Query Routing** | Automatically classifies queries into RAG (simple FAQs) or Agent (complex calculations). |
 
 ## 🛠️ Tech Stack
 
